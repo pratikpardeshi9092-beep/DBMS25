@@ -1,0 +1,145 @@
+6. Write a database trigger on the Library Management System.
+a. Library table (B_id, Title, Edition,no_of_copies)
+b. Library audit table (B_id, Title, Edition, no_of_copies, date_of_mod, type_of_operation, user who performed the operation)
+c. Transaction table(Transaction id, Book id, Sid, Issue or rerurn, no of copies issued or return, issue date or return_date)
+1. To create a trigger to check the number of copies available before issuing a book if number of the number of books available then issue the number of books which are copies issuing available.
+2. To update the number of copies available after the book is issued or returned.
+
+
+
+-- Create and use DB
+CREATE DATABASE IF NOT EXISTS lmsdb;
+USE lmsdb;
+
+-- a) Library table
+CREATE TABLE library (
+  B_id         INT PRIMARY KEY,
+  Title        VARCHAR(200) NOT NULL,
+  Edition      VARCHAR(50),
+  no_of_copies INT NOT NULL DEFAULT 0
+);
+
+-- b) Library audit table (optional, not required here, but good to have)
+CREATE TABLE library_audit (
+  audit_id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  B_id              INT,
+  Title             VARCHAR(200),
+  Edition           VARCHAR(50),
+  no_of_copies      INT,
+  date_of_mod       DATETIME NOT NULL,
+  type_of_operation ENUM('UPDATE','DELETE') NOT NULL,
+  mod_user          VARCHAR(255) NOT NULL
+);
+
+-- c) Transaction table
+-- action_type: ISSUE or RETURN
+-- copies: number of copies issued/returned (>0)
+CREATE TABLE transactions (
+  transaction_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  book_id        INT NOT NULL,
+  s_id           INT NOT NULL,
+  action_type    ENUM('ISSUE','RETURN') NOT NULL,
+  copies         INT NOT NULL,
+  issue_date     DATE NULL,
+  return_date    DATE NULL,
+  CONSTRAINT chk_copies_pos CHECK (copies > 0),
+  CONSTRAINT fk_tx_book FOREIGN KEY (book_id) REFERENCES library(B_id)
+);
+
+-- (Optional) seed a book to test
+INSERT INTO library (B_id, Title, Edition, no_of_copies)
+VALUES (1,'Operating Systems','3rd',5)
+ON DUPLICATE KEY UPDATE Title=VALUES(Title);
+
+
+
+
+DELIMITER $$
+
+-- BEFORE INSERT: validate/cap copies for ISSUE, set dates, basic checks
+DROP TRIGGER IF EXISTS trg_tx_before_insert $$
+CREATE TRIGGER trg_tx_before_insert
+BEFORE INSERT ON transactions
+FOR EACH ROW
+BEGIN
+  DECLARE available INT;
+
+  -- ensure positive copies
+  IF NEW.copies IS NULL OR NEW.copies <= 0 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'copies must be > 0';
+  END IF;
+
+  -- book must exist
+  IF (SELECT COUNT(*) FROM library WHERE B_id = NEW.book_id) = 0 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Book ID not found in library';
+  END IF;
+
+  IF NEW.action_type = 'ISSUE' THEN
+    -- set dates consistently
+    IF NEW.issue_date IS NULL THEN SET NEW.issue_date = CURRENT_DATE(); END IF;
+    SET NEW.return_date = NULL;
+
+    -- check availability and cap to available
+    SELECT no_of_copies INTO available
+    FROM library
+    WHERE B_id = NEW.book_id
+    FOR UPDATE;
+
+    IF available <= 0 THEN
+      SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'No copies available to issue';
+    END IF;
+
+    IF NEW.copies > available THEN
+      -- issue only what is available
+      SET NEW.copies = available;
+    END IF;
+
+  ELSEIF NEW.action_type = 'RETURN' THEN
+    IF NEW.return_date IS NULL THEN SET NEW.return_date = CURRENT_DATE(); END IF;
+    SET NEW.issue_date = NULL;
+  ELSE
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Invalid action_type (use ISSUE or RETURN)';
+  END IF;
+END $$
+
+-- AFTER INSERT: update stock in library based on action
+DROP TRIGGER IF EXISTS trg_tx_after_insert $$
+CREATE TRIGGER trg_tx_after_insert
+AFTER INSERT ON transactions
+FOR EACH ROW
+BEGIN
+  IF NEW.action_type = 'ISSUE' THEN
+    UPDATE library
+      SET no_of_copies = no_of_copies - NEW.copies
+      WHERE B_id = NEW.book_id;
+  ELSEIF NEW.action_type = 'RETURN' THEN
+    UPDATE library
+      SET no_of_copies = no_of_copies + NEW.copies
+      WHERE B_id = NEW.book_id;
+  END IF;
+END $$
+
+DELIMITER ;
+
+
+
+-- Start: 5 copies (seeded above)
+SELECT * FROM library;
+
+-- Try to issue 7 (only 5 available -> trigger caps to 5)
+INSERT INTO transactions (book_id, s_id, action_type, copies)
+VALUES (1, 1001, 'ISSUE', 7);
+
+SELECT * FROM library;        -- no_of_copies should now be 0
+SELECT * FROM transactions;   -- the row will show copies = 5 (capped)
+
+-- Return 2 copies
+INSERT INTO transactions (book_id, s_id, action_type, copies)
+VALUES (1, 1001, 'RETURN', 2);
+
+SELECT * FROM library;        -- no_of_copies should now be 2
+
+
+
+
+

@@ -1,0 +1,122 @@
+3. Create a medical database having following table. 1.Patient table (pat_id,pat_name,date_adm,age,city)
+2. Doctor table(doc_id,doc_name,qualification,exp,dept,city,salary);
+3. Treats table(doc_id,pat_id, disease); foriegn key doc_id,pat_id;
+Queries:
+1) Insert atleast 5 records in each table
+2) Display all the patient's name between the age group 18-50;
+3) Change the qualification of doctor shubham from mbbs to md;
+4) Display patients suffering from Cancer;
+5) Display dept wise total salary of the doctors;
+6) Find the dept, which has the highest avg salary;
+7) find the avg salary of docs in dentist dept;
+8) find how many docs works in hospital
+
+
+
+-- Create and use database
+CREATE DATABASE medicaldb;
+USE medicaldb;
+
+-- Patient table
+CREATE TABLE patient (
+  pat_id    INT PRIMARY KEY,
+  pat_name  VARCHAR(100) NOT NULL,
+  date_adm  DATE,
+  age       INT,
+  city      VARCHAR(100)
+);
+
+-- Doctor table
+CREATE TABLE doctor (
+  doc_id          INT PRIMARY KEY,
+  doc_name        VARCHAR(100) NOT NULL,
+  qualification   VARCHAR(50),
+  `exp`           INT,                 -- years of experience (exp is a function name; backticked here)
+  dept            VARCHAR(50),
+  city            VARCHAR(100),
+  salary          DECIMAL(10,2)
+);
+
+-- Treats table (bridge) with FKs
+CREATE TABLE treats (
+  doc_id  INT,
+  pat_id  INT,
+  disease VARCHAR(100),
+  PRIMARY KEY (doc_id, pat_id),        -- one doctor–patient pair once
+  CONSTRAINT fk_treats_doc  FOREIGN KEY (doc_id) REFERENCES doctor(doc_id),
+  CONSTRAINT fk_treats_pat  FOREIGN KEY (pat_id) REFERENCES patient(pat_id)
+);
+
+
+
+
+-- Patients
+INSERT INTO patient (pat_id, pat_name, date_adm, age, city) VALUES
+(1,'Aarav Mehta','2025-10-01',25,'Mumbai'),
+(2,'Priya Shah','2025-10-03',42,'Pune'),
+(3,'Rahul Verma','2025-09-28',17,'Nashik'),
+(4,'Neha Kulkarni','2025-10-10',33,'Nagpur'),
+(5,'Vikas Patil','2025-10-05',55,'Mumbai');
+
+-- Doctors
+INSERT INTO doctor (doc_id, doc_name, qualification, `exp`, dept, city, salary) VALUES
+(101,'Shubham','MBBS',3,'General','Mumbai',55000.00),
+(102,'Anita Desai','MD',10,'Oncology','Pune',150000.00),
+(103,'Rohan Gupta','BDS',5,'Dentist','Mumbai',80000.00),
+(104,'Sneha Iyer','MS',8,'Surgery','Nagpur',120000.00),
+(105,'Amit Joshi','MD',12,'Cardiology','Mumbai',170000.00);
+
+-- Treats (ensure pat_id/doc_id exist)
+INSERT INTO treats (doc_id, pat_id, disease) VALUES
+(102,1,'Cancer'),
+(103,2,'Cavity'),
+(104,4,'Appendicitis'),
+(101,3,'Flu'),
+(105,5,'Hypertension'),
+(102,5,'Cancer');   -- patient 5 also has Cancer with Oncologist
+
+
+
+
+SELECT pat_name
+FROM patient
+WHERE age BETWEEN 18 AND 50;
+
+
+
+UPDATE doctor
+SET qualification = 'MD'
+WHERE LOWER(doc_name) = 'shubham' AND UPPER(qualification) = 'MBBS';
+
+
+SELECT p.pat_id, p.pat_name, p.age, p.city
+FROM patient p
+JOIN treats  t ON t.pat_id = p.pat_id
+WHERE t.disease = 'Cancer';
+
+
+SELECT dept, SUM(salary) AS total_salary
+FROM doctor
+GROUP BY dept;
+
+
+SELECT dept, AVG(salary) AS avg_salary
+FROM doctor
+GROUP BY dept
+ORDER BY avg_salary DESC
+LIMIT 1;
+
+
+
+SELECT AVG(salary) AS avg_salary_dentist
+FROM doctor
+WHERE dept = 'Dentist';
+
+
+SELECT COUNT(*) AS total_doctors
+FROM doctor;
+
+
+SELECT * FROM patient;
+SELECT * FROM doctor;
+SELECT * FROM treats;

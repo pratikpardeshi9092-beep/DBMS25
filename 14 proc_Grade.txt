@@ -1,0 +1,117 @@
+14. A) Write a Stored Procedure namely proc_Grade for the categorization of student. If marks scored by students in examination is <=1500 and marks>=990 then student will be placed in distinction category if marks scored are between 989 and 900 category is first class, if marks 899 and 825 category is Higher Second Class. Write a PL/SQL block to use procedure created with above requirement.
+1. Stud_Marks(name, total_marks)
+2. Result (Roll, Name, Class)
+B) Create a function which will return the total students in a given class.
+
+
+
+
+
+CREATE TABLE Stud_Marks (
+    Name VARCHAR(100) PRIMARY KEY,
+    Total_Marks INT
+);
+
+CREATE TABLE Result (
+    Roll INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(100),
+    Class VARCHAR(50)
+);
+
+
+
+
+
+INSERT INTO Stud_Marks VALUES
+('Amit', 1005),
+('Bhavna', 955),
+('Chetan', 882),
+('Deepa', 740),
+('Eshaan', 1490);
+
+
+
+
+
+DELIMITER $$
+
+CREATE PROCEDURE proc_Grade(IN p_name VARCHAR(100))
+BEGIN
+    DECLARE v_marks INT;
+    DECLARE v_class VARCHAR(50);
+
+    -- Get student marks
+    SELECT Total_Marks INTO v_marks
+    FROM Stud_Marks
+    WHERE Name = p_name;
+
+    -- Categorization Logic
+    IF v_marks BETWEEN 990 AND 1500 THEN
+        SET v_class = 'Distinction';
+    ELSEIF v_marks BETWEEN 900 AND 989 THEN
+        SET v_class = 'First Class';
+    ELSEIF v_marks BETWEEN 825 AND 899 THEN
+        SET v_class = 'Higher Second Class';
+    ELSE
+        SET v_class = 'Other';
+    END IF;
+
+    -- Insert result into Result table
+    INSERT INTO Result (Name, Class) VALUES (p_name, v_class);
+END $$
+
+DELIMITER ;
+
+
+
+
+
+
+
+
+CALL proc_Grade('Amit');
+CALL proc_Grade('Bhavna');
+CALL proc_Grade('Chetan');
+CALL proc_Grade('Deepa');
+CALL proc_Grade('Eshaan');
+
+
+
+
+
+
+SELECT * FROM Result;
+
+
+
+
+
+DELIMITER $$
+
+CREATE FUNCTION fn_total_in_class(p_class VARCHAR(50))
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE v_count INT;
+
+    SELECT COUNT(*) INTO v_count
+    FROM Result
+    WHERE Class = p_class;
+
+    RETURN v_count;
+END $$
+
+DELIMITER ;
+
+
+
+
+
+
+SELECT fn_total_in_class('First Class') AS Total_First_Class;
+SELECT fn_total_in_class('Distinction') AS Total_Distinction;
+SELECT fn_total_in_class('Higher Second Class') AS Total_HSC;
+
+
+
+

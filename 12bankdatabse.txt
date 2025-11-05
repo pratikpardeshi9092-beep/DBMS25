@@ -1,0 +1,174 @@
+12. Create the bank database with the following table:
+1. branch_master(branch_id, bname) branch_id is primary key
+2. employee_master(emp_no, e_name, branch_id, salary, dept, manager_id) emp_no primary key, branch id foreign key, manager_id foreign key on delete set null
+3. contact details (empid, emailid, phnno) emp_id forieign key and apply on delete set null constraint on emp_id
+4. emp_address_details(emp_id, street, city, state) apply a foreign on emp_id also apply on delete cascade constraint
+5. branch_address(branch_id, city, state) branch_id is foreign key Insert 5 records in each table
+Queries:
+1) List the details of employees who belong to admin dept along the branch name to which they belong.
+2) List the employee's name along with the phn no and city (using inner join).
+3) List the employee's contact details irrespective of whether they are working or have left.
+4) Retrive the employee's name and their respective manager's name.
+5) Find the employee whose salary are more than the salary of everybody who works at branch vadgaon
+6) Find the employee who do not have a job at vadgaon branch.
+
+
+
+
+-- DB
+CREATE DATABASE bankdb12;
+USE bankdb12;
+
+-- 1) Branch master
+CREATE TABLE branch_master (
+  branch_id INT PRIMARY KEY,
+  bname     VARCHAR(100) NOT NULL
+);
+
+-- 5) Branch address (FK)
+CREATE TABLE branch_address (
+  branch_id INT,
+  city      VARCHAR(100),
+  state     VARCHAR(100),
+  CONSTRAINT fk_branch_addr
+    FOREIGN KEY (branch_id) REFERENCES branch_master(branch_id)
+);
+
+-- 2) Employee master (self-FK manager_id ON DELETE SET NULL)
+CREATE TABLE employee_master (
+  emp_no     INT PRIMARY KEY,
+  e_name     VARCHAR(100) NOT NULL,
+  branch_id  INT,
+  salary     DECIMAL(10,2),
+  dept       VARCHAR(50),
+  manager_id INT NULL,
+  CONSTRAINT fk_emp_branch
+    FOREIGN KEY (branch_id) REFERENCES branch_master(branch_id),
+  CONSTRAINT fk_emp_mgr
+    FOREIGN KEY (manager_id) REFERENCES employee_master(emp_no)
+    ON DELETE SET NULL
+);
+
+-- 3) Contact details (FK ON DELETE SET NULL)
+CREATE TABLE contact_details (
+  emp_id  INT NULL,
+  emailid VARCHAR(150),
+  phnno   VARCHAR(20),
+  CONSTRAINT fk_contact_emp
+    FOREIGN KEY (emp_id) REFERENCES employee_master(emp_no)
+    ON DELETE SET NULL
+);
+
+-- 4) Employee address (FK ON DELETE CASCADE)
+CREATE TABLE emp_address_details (
+  emp_id INT,
+  street VARCHAR(200),
+  city   VARCHAR(100),
+  state  VARCHAR(100),
+  CONSTRAINT fk_addr_emp
+    FOREIGN KEY (emp_id) REFERENCES employee_master(emp_no)
+    ON DELETE CASCADE
+);
+
+-- Seed data (5 rows each)
+INSERT INTO branch_master (branch_id, bname) VALUES
+(1,'Vadgaon'),(2,'Kothrud'),(3,'Shivajinagar'),(4,'Hinjewadi'),(5,'Camp');
+
+INSERT INTO branch_address (branch_id, city, state) VALUES
+(1,'Pune','Maharashtra'),(2,'Pune','Maharashtra'),
+(3,'Pune','Maharashtra'),(4,'Pune','Maharashtra'),(5,'Pune','Maharashtra');
+
+INSERT INTO employee_master (emp_no,e_name,branch_id,salary,dept,manager_id) VALUES
+(1001,'Asha',    1, 18000,'Admin',    NULL),   -- Vadgaon
+(1002,'Bharat',  1, 12000,'Teller',   1001),
+(1003,'Chetan',  2, 26000,'Admin',    NULL),   -- Kothrud
+(1004,'Deepa',   3, 14000,'Loans',    1003),
+(1005,'Eshan',   1, 32000,'Admin',    1001);   -- Vadgaon
+
+INSERT INTO contact_details (emp_id,emailid,phnno) VALUES
+(1001,'asha@bank.com','9876500010'),
+(1003,'chetan@bank.com','9876500030'),
+(1005,'eshan@bank.com','9876500050'),
+(1004,NULL,'9876500040'),
+(NULL,'help@bank.com','1800123456');  -- orphan row to show “not working” case
+
+INSERT INTO emp_address_details (emp_id,street,city,state) VALUES
+(1001,'12 MG Road','Pune','Maharashtra'),
+(1002,'5 FC Lane','Pune','Maharashtra'),
+(1003,'44 Karve Nagar','Pune','Maharashtra'),
+(1004,'9 Law College Rd','Pune','Maharashtra'),
+(1005,'101 Paud Phata','Pune','Maharashtra');
+
+
+
+
+
+SELECT e.emp_no, e.e_name, e.salary, e.dept, b.bname
+FROM employee_master e
+JOIN branch_master b ON b.branch_id = e.branch_id
+WHERE e.dept = 'Admin'
+ORDER BY e.emp_no;
+
+
+
+SELECT e.e_name, c.phnno, a.city
+FROM employee_master e
+JOIN contact_details     c ON c.emp_id = e.emp_no
+JOIN emp_address_details a ON a.emp_id = e.emp_no
+ORDER BY e.emp_no;
+
+
+
+-- contacts (even orphan) + employee name if present
+SELECT COALESCE(e.emp_no, NULL) AS emp_no,
+       COALESCE(e.e_name, '(no employee)') AS e_name,
+       c.emailid, c.phnno
+FROM contact_details c
+LEFT JOIN employee_master e ON e.emp_no = c.emp_id
+
+UNION
+
+-- employees without any contact
+SELECT e.emp_no, e.e_name, NULL AS emailid, NULL AS phnno
+FROM employee_master e
+LEFT JOIN contact_details c ON c.emp_id = e.emp_no
+WHERE c.emp_id IS NULL
+ORDER BY emp_no;
+
+
+
+SELECT e.emp_no,
+       e.e_name  AS employee,
+       m.e_name  AS manager
+FROM employee_master e
+LEFT JOIN employee_master m ON m.emp_no = e.manager_id
+ORDER BY e.emp_no;
+
+
+
+SELECT e.emp_no, e.e_name, e.salary
+FROM employee_master e
+WHERE e.salary > ALL (
+  SELECT e2.salary
+  FROM employee_master e2
+  JOIN branch_master b ON b.branch_id = e2.branch_id
+  WHERE b.bname = 'Vadgaon'
+);
+
+
+
+SELECT e.emp_no, e.e_name, e.salary
+FROM employee_master e
+WHERE e.salary >
+      (SELECT COALESCE(MAX(e2.salary),0)
+       FROM employee_master e2
+       JOIN branch_master b ON b.branch_id = e2.branch_id
+       WHERE b.bname = 'Vadgaon');
+
+
+
+SELECT e.emp_no, e.e_name, e.salary, b.bname
+FROM employee_master e
+JOIN branch_master b ON b.branch_id = e.branch_id
+WHERE b.bname <> 'Vadgaon'
+ORDER BY e.emp_no;

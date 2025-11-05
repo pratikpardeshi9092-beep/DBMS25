@@ -1,0 +1,172 @@
+Create the University Database having following specifications
+1. Department table(dept_no, dept_name, building_name) Apply Unique constraint on name field.
+2. Instructor table( ins_id, ins_name, dept_no, salary, mob_no) Apply NOT NULL constraint on name field.
+3. Course table( course_id of int data type, title, dept_no, credits)
+4. Teaches table(teacher_id, course id, semester, year)
+Queries:
+1) Add the primary key in department table.
+2) Add the foreign key in instructor table.
+3) Create a view of instructor relation except the salary field.
+4) Insert record into instructor table using newly created viewname.
+5) Update the department number of particular instructor using update view.
+6) Delete record of particular instructor from instructor table using newly created viewname.
+7) Delete the last view.
+8) Create a sequence (or use the AUTO_INCREMENT attribute) on course_id starting with 51
+9) Create database and show all databases
+10) Create table and show all table
+11) Delete teaches table
+----------------------------------------------------------------
+SHOW DATABASES;
+
+
+CREATE DATABASE university;
+
+
+USE university;
+
+
+-- 1. Department (unique on dept_name)
+CREATE TABLE department (
+  dept_no       INT,
+  dept_name     VARCHAR(100) NOT NULL,
+  building_name VARCHAR(100),
+  CONSTRAINT uq_department_name UNIQUE (dept_name)       -- unique as required
+);
+-- 2. Instructor (NOT NULL on ins_name)
+CREATE TABLE instructor (
+  ins_id   INT,
+  ins_name VARCHAR(100) NOT NULL,                        -- NOT NULL as required
+  dept_no  INT,
+  salary   DECIMAL(10,2),
+  mob_no   VARCHAR(15)
+);
+-- 3. Course
+CREATE TABLE course (
+  course_id INT,                                         -- int as required
+  title     VARCHAR(100),
+  dept_no   INT,
+  credits   INT
+);
+-- 4. Teaches
+CREATE TABLE teaches (
+  teacher_id INT,
+  course_id  INT,
+  semester   VARCHAR(10),
+  year       INT
+);
+
+
+SHOW TABLES;
+
+
+
+ALTER TABLE department
+  ADD CONSTRAINT pk_department PRIMARY KEY (dept_no);
+  
+  
+  
+ALTER TABLE instructor
+  ADD CONSTRAINT fk_instructor_dept
+  FOREIGN KEY (dept_no) REFERENCES department(dept_no);
+
+
+
+-- 1) See what departments you have
+SELECT * FROM department;
+-- 2) If dept 10 is missing, add it (dept_name is UNIQUE, choose any name once)
+INSERT INTO department (dept_no, dept_name, building_name)
+VALUES (10, 'Computer Science', 'Main Block');
+-- 3) Now retry your insert through the view
+INSERT INTO v_instructor (ins_id, ins_name, dept_no, mob_no)
+VALUES (101, 'Anita Desai', 10, '9876543210');
+
+
+
+INSERT INTO department (dept_no, dept_name, building_name)
+VALUES (20, 'Electronics', 'Tech Block');
+
+
+
+CREATE VIEW v_instructor AS
+SELECT ins_id, ins_name, dept_no, mob_no
+FROM instructor;
+
+
+
+INSERT INTO v_instructor (ins_id, ins_name, dept_no, mob_no)
+VALUES (101, 'Anita Desai', 10, '9876543210');
+
+
+
+UPDATE v_instructor
+SET dept_no = 20
+WHERE ins_id = 101;
+
+
+DELETE FROM v_instructor
+WHERE ins_id = 101;
+
+
+
+DROP VIEW v_instructor;
+
+
+
+-- Make course_id the PK and AUTO_INCREMENT
+ALTER TABLE course
+  ADD CONSTRAINT pk_course PRIMARY KEY (course_id);
+
+
+
+ALTER TABLE course
+  MODIFY course_id INT AUTO_INCREMENT;
+
+
+
+-- Start from 51
+ALTER TABLE course AUTO_INCREMENT = 51;
+
+
+
+-- Test insert (course_id will auto-fill as 51)
+INSERT INTO course (title, dept_no, credits)
+VALUES ('DBMS', 10, 4);
+
+
+
+CREATE SEQUENCE course_id_seq START WITH 51;
+
+
+
+-- Example usage:
+INSERT INTO course (course_id, title, dept_no, credits)
+VALUES (NEXT VALUE FOR course_id_seq, 'Algorithms', 10, 4);
+
+
+
+CREATE DATABASE university2;
+SHOW DATABASES;
+
+
+
+CREATE TABLE sample_table (
+  id INT PRIMARY KEY,
+  note VARCHAR(50)
+);
+SHOW TABLES;
+
+
+DROP TABLE teaches;
+
+
+-- Describe structures
+DESC department;
+DESC instructor;
+DESC course;
+
+
+-- See data
+SELECT * FROM department;
+SELECT * FROM instructor;
+SELECT * FROM course;
+

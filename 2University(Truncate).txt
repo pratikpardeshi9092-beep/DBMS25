@@ -1,0 +1,117 @@
+2.Create the University Datalvuse laving following spccifications:
+1.Departmet (able (dept_no, dept_narme, building_name)Apply Uniquc constraint on name ficld.
+2.Instructor table (ins id, ins_name, dept_no, salary, mob _no)Apply NOT NULL constraint on name ficld.
+3.Course table (course id of int data type, title, dept_no, credits)
+4.Tcachess table (tcacher_id, course._ id, semester, year)
+Qucrics;
+1) Add the primary key in deparment table.
+2) Add the forcign key in instructor table.
+3) Modify the table department by adding a column budgct.
+4) Creatc unique index on mobilc number of instructor table.
+5) Removc the Budget from department table, 
+6) Increase the size of the title ficld of course relation.
+7)I Delete the index from the instructor tablc.
+8) Rename the course table to another table name.
+9) Create a vicw by showing an instructor name and title of course they tcaches, 
+10) Delete the primary key from the department tablc.
+11)Delete all records with truncate command.
+
+
+CREATE DATABASE university2;
+USE university2;
+
+
+
+-- 1) Department (unique on dept_name; PK will be added later in Q1)
+CREATE TABLE department (
+  dept_no       INT,
+  dept_name     VARCHAR(100) NOT NULL,
+  building_name VARCHAR(100),
+  CONSTRAINT uq_department_name UNIQUE (dept_name)
+);
+-- 2) Instructor (ins_name NOT NULL; FK will be added later in Q2)
+CREATE TABLE instructor (
+  ins_id   INT,
+  ins_name VARCHAR(100) NOT NULL,
+  dept_no  INT,
+  salary   DECIMAL(10,2),
+  mob_no   VARCHAR(20)
+);
+-- 3) Course
+CREATE TABLE course (
+  course_id INT,
+  title     VARCHAR(100),
+  dept_no   INT,
+  credits   INT
+);
+-- 4) Teaches
+CREATE TABLE teaches (
+  teacher_id INT,
+  course_id  INT,
+  semester   VARCHAR(10),
+  year       INT
+);
+
+
+
+ALTER TABLE department
+  ADD CONSTRAINT pk_department PRIMARY KEY (dept_no);
+
+
+
+ALTER TABLE instructor
+  ADD CONSTRAINT fk_instructor_dept
+  FOREIGN KEY (dept_no) REFERENCES department(dept_no);
+
+
+
+ALTER TABLE department
+  ADD COLUMN budget DECIMAL(12,2);
+
+
+CREATE UNIQUE INDEX ux_instructor_mob_no
+  ON instructor (mob_no);
+
+
+ALTER TABLE department
+  DROP COLUMN budget;
+
+
+ALTER TABLE course
+  MODIFY title VARCHAR(200);
+
+
+DROP INDEX ux_instructor_mob_no ON instructor;
+
+
+RENAME TABLE course TO course_catalog;
+
+
+CREATE VIEW v_instructor_courses AS
+SELECT i.ins_name AS instructor_name,
+       c.title    AS course_title
+FROM instructor i
+JOIN teaches   t ON t.teacher_id = i.ins_id
+JOIN course_catalog c ON c.course_id = t.course_id;
+
+
+
+ALTER TABLE instructor
+  DROP FOREIGN KEY fk_instructor_dept;
+
+ALTER TABLE department
+  DROP PRIMARY KEY;
+
+
+TRUNCATE TABLE teaches;
+TRUNCATE TABLE course_catalog;
+TRUNCATE TABLE instructor;
+TRUNCATE TABLE department;
+
+
+SHOW TABLES;
+DESC department;
+DESC instructor;
+DESC course_catalog;
+SELECT * FROM v_instructor_courses;
+

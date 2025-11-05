@@ -1,0 +1,141 @@
+7.Create a medical database having following table.
+1.Patient table (pat_id,pat_name,date_adm,age,city),
+2.Doctor table(doc_id,doc_name,qualification,exp,dept,city, salary).
+3.Treats table(doc_id,pat_id, disease); foriegn key doc id, pat id;
+Queries:
+1) Insert atleast 5 records in each table;
+2) List the cities in which either doctors or patient lives,
+3) List the cites where both lives; List dname pname and their cities name if they live in same
+city.
+4) Find the doctors who have not treated any patient;
+5)
+a) Display name of doctors and patients as a single column
+b) Let duplicate name appear many time
+6) What is the total money collected so far from treatment of patients?
+7) Find average salary of each department.
+8) Display patient name which does not have email id.
+
+
+
+-- Create and use database
+CREATE DATABASE medicaldb7;
+USE medicaldb7;
+
+-- 1) Patient
+CREATE TABLE patient (
+  pat_id    INT PRIMARY KEY,
+  pat_name  VARCHAR(100) NOT NULL,
+  date_adm  DATE,
+  age       INT,
+  city      VARCHAR(100),
+  email     VARCHAR(120)  -- added for Q8
+);
+
+-- 2) Doctor
+CREATE TABLE doctor (
+  doc_id        INT PRIMARY KEY,
+  doc_name      VARCHAR(100) NOT NULL,
+  qualification VARCHAR(50),
+  `exp`         INT,                 -- years of experience (exp is a function name; backticked)
+  dept          VARCHAR(50),
+  city          VARCHAR(100),
+  salary        DECIMAL(10,2)
+);
+
+-- 3) Treats (bridge) with FKs
+CREATE TABLE treats (
+  doc_id  INT,
+  pat_id  INT,
+  disease VARCHAR(100),
+  fee     DECIMAL(10,2) NOT NULL DEFAULT 0,   -- added for Q6 (money collected)
+  PRIMARY KEY (doc_id, pat_id),               -- one doctor–patient pair once (simple model)
+  CONSTRAINT fk_treats_doc FOREIGN KEY (doc_id) REFERENCES doctor(doc_id),
+  CONSTRAINT fk_treats_pat FOREIGN KEY (pat_id) REFERENCES patient(pat_id)
+);
+
+
+
+-- Patients (some without email for Q8)
+INSERT INTO patient (pat_id, pat_name, date_adm, age, city, email) VALUES
+(1,'Aarav Mehta','2025-10-01',25,'Mumbai','aarav@example.com'),
+(2,'Priya Shah','2025-10-03',42,'Pune',NULL),
+(3,'Rahul Verma','2025-09-28',17,'Nashik',''),
+(4,'Neha Kulkarni','2025-10-10',33,'Nagpur','neha.k@example.com'),
+(5,'Vikas Patil','2025-10-05',55,'Mumbai','vikas.p@example.com');
+
+-- Doctors
+INSERT INTO doctor (doc_id, doc_name, qualification, `exp`, dept, city, salary) VALUES
+(101,'Shubham','MBBS',3,'General','Mumbai',55000.00),
+(102,'Anita Desai','MD',10,'Oncology','Pune',150000.00),
+(103,'Rohan Gupta','BDS',5,'Dentist','Mumbai',80000.00),
+(104,'Sneha Iyer','MS',8,'Surgery','Nagpur',120000.00),
+(105,'Amit Joshi','MD',12,'Cardiology','Mumbai',170000.00);
+
+-- Treats (ensure referenced IDs exist)
+INSERT INTO treats (doc_id, pat_id, disease, fee) VALUES
+(102,1,'Cancer',25000.00),
+(103,2,'Cavity',1500.00),
+(104,4,'Appendicitis',18000.00),
+(101,3,'Flu',800.00),
+(105,5,'Hypertension',2200.00),
+(102,5,'Cancer',30000.00);
+
+
+
+
+SELECT city FROM patient
+UNION
+SELECT city FROM doctor;
+
+
+
+SELECT DISTINCT p.city
+FROM patient p
+JOIN doctor  d ON d.city = p.city;
+
+
+SELECT d.doc_name AS doctor_name,
+       p.pat_name AS patient_name,
+       d.city     AS city
+FROM doctor d
+JOIN patient p ON p.city = d.city
+ORDER BY city, doctor_name, patient_name;
+
+
+
+SELECT d.doc_id, d.doc_name
+FROM doctor d
+LEFT JOIN treats t ON t.doc_id = d.doc_id
+WHERE t.doc_id IS NULL;
+
+
+SELECT doc_name AS person_name FROM doctor
+UNION
+SELECT pat_name            FROM patient;
+
+
+
+SELECT doc_name AS person_name FROM doctor
+UNION ALL
+SELECT pat_name            FROM patient;
+
+
+
+SELECT SUM(fee) AS total_collected
+FROM treats;
+
+
+SELECT dept, AVG(salary) AS avg_salary
+FROM doctor
+GROUP BY dept;
+
+
+SELECT pat_name
+FROM patient
+WHERE email IS NULL OR email = '';
+
+
+SELECT * FROM patient;
+SELECT * FROM doctor;
+SELECT * FROM treats;
+

@@ -1,0 +1,97 @@
+4. Write a database trigger on the library. The system should keep track of records that are updated or deleted. 
+The old values of the updated or deleted record should be added in library audit table along with the date of modification, 
+type of operation and the user who performed the modification.
+a. Library table (B_id, Title, Edition,no of copies).
+b. Library audit table (B_id, Title, Edition, no of copies, date_of_mod, type_of_operation, user who performed the operation)
+c. Transaction table(Transaction id, Book id, Sid, Issue or rerurn, no of copies issued or return, issue date or return_date)
+
+
+
+CREATE DATABASE IF NOT EXISTS librarydb;
+USE librarydb;
+
+-- a) Library table
+CREATE TABLE library (
+  B_id         INT PRIMARY KEY,
+  Title        VARCHAR(200) NOT NULL,
+  Edition      VARCHAR(50),
+  no_of_copies INT DEFAULT 0
+);
+
+-- b) Library audit table
+-- (stores OLD values + when, what operation, and who did it)
+CREATE TABLE library_audit (
+  audit_id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+  B_id              INT,
+  Title             VARCHAR(200),
+  Edition           VARCHAR(50),
+  no_of_copies      INT,
+  date_of_mod       DATETIME NOT NULL,
+  type_of_operation ENUM('UPDATE','DELETE') NOT NULL,
+  mod_user          VARCHAR(255) NOT NULL
+);
+
+-- c) Transaction table
+CREATE TABLE transactions (
+  transaction_id        BIGINT AUTO_INCREMENT PRIMARY KEY,
+  book_id               INT,
+  s_id                  INT,
+  action_type           ENUM('ISSUE','RETURN') NOT NULL,
+  copies_delta          INT NOT NULL,               -- positive for ISSUE, negative for RETURN (or vice-versa)
+  action_date           DATE NOT NULL,
+  CONSTRAINT fk_tx_book FOREIGN KEY (book_id) REFERENCES library(B_id)
+);
+
+
+
+DELIMITER $$
+
+-- Drop if re-running
+DROP TRIGGER IF EXISTS trg_library_after_update $$
+DROP TRIGGER IF EXISTS trg_library_after_delete $$
+
+-- After UPDATE: store OLD values (before change)
+CREATE TRIGGER trg_library_after_update
+AFTER UPDATE ON library
+FOR EACH ROW
+BEGIN
+  INSERT INTO library_audit
+    (B_id, Title, Edition, no_of_copies, date_of_mod, type_of_operation, mod_user)
+  VALUES
+    (OLD.B_id, OLD.Title, OLD.Edition, OLD.no_of_copies, NOW(), 'UPDATE', CURRENT_USER());
+END $$
+
+-- After DELETE: store OLD values (being removed)
+CREATE TRIGGER trg_library_after_delete
+AFTER DELETE ON library
+FOR EACH ROW
+BEGIN
+  INSERT INTO library_audit
+    (B_id, Title, Edition, no_of_copies, date_of_mod, type_of_operation, mod_user)
+  VALUES
+    (OLD.B_id, OLD.Title, OLD.Edition, OLD.no_of_copies, NOW(), 'DELETE', CURRENT_USER());
+END $$
+
+DELIMITER ;
+
+
+
+-- Seed one book
+INSERT INTO library (B_id, Title, Edition, no_of_copies)
+VALUES (1, 'DBMS Fundamentals', '3rd', 10);
+
+-- UPDATE (should log one audit row of type UPDATE with OLD values)
+UPDATE library
+SET no_of_copies = 12
+WHERE B_id = 1;
+
+-- DELETE (should log one audit row of type DELETE with OLD values)
+DELETE FROM library
+WHERE B_id = 1;
+
+-- See audit entries
+SELECT * FROM library_audit ORDER BY audit_id;
+
+
+
+
